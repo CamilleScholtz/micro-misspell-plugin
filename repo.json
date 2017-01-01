@@ -4,8 +4,8 @@
   "Tags": ["spell", "check", "misspell"],
   "Versions": [
     {
-      "Version": "0.1",
-      "Url": "https://github.com/onodera-punpun/micro-misspell-plugin/releases/download/v0.1/misspell_0.1.tar.gz",
+      "Version": "0.1.0",
+      "Url": "https://github.com/onodera-punpun/micro-misspell-plugin/archive/0.1.0.zip",
       "Require": {
         "micro": ">=1.0.3"
       }
