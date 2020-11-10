@@ -1,20 +1,10 @@
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
-if GetOption("misspell") == nil then
-    AddOption("misspell", true)
-end
+local micro = import("micro")
+local config = import("micro/config")
+local shell = import("micro/shell")
+local buffer = import("micro/buffer")
 
-MakeCommand("misspell", "misspell.misspellCommand", 0)
-
-function misspellCommand()
-    CurView():Save(false)
-    runMisspell()
-end
-
-function runMisspell()
-    CurView():ClearGutterMessages("misspell")
-    JobSpawn("misspell", {CurView().Buf.Path}, "", "", "misspell.onExit", "%f:%l:%d+: %m")
-end
 
 function split(str, sep)
     local result = {}
@@ -30,16 +20,17 @@ function basename(file)
     return name
 end
 
-function onSave(view)
-    if GetOption("misspell") then
-        runMisspell()
+function onSave(bufpane)
+    if config.GetGlobalOption("misspell") then
+        runMisspell(bufpane)
     else
-        CurView():ClearAllGutterMessages()
+        micro.CurPane():ClearAllGutterMessages()
     end
 end
 
-function onExit(output, errorformat)
+function onExit(output, args)
     local lines = split(output, "\n")
+	local errorformat = args[1]
 
     local regex = errorformat:gsub("%%f", "(..-)"):gsub("%%l", "(%d+)"):gsub("%%m", "(.+)")
     for _,line in ipairs(lines) do
@@ -47,9 +38,28 @@ function onExit(output, errorformat)
         line = line:match("^%s*(.+)%s*$")
         if string.find(line, regex) then
             local file, line, msg = string.match(line, regex)
-            if basename(CurView().Buf.Path) == basename(file) then
-                CurView():GutterMessage("misspell", tonumber(line), msg, 2)
+            if basename(micro.CurPane().Buf.Path) == basename(file) then
+				local gutm = buffer.NewMessageAtLine("misspell", msg, tonumber(line), 2)
+                micro.CurPane().Buf:AddMessage(gutm)
             end
         end
     end
+end
+
+function misspellCommand(bufpane, arguments)
+    bufpane:Save(false)
+    runMisspell(bufpane)
+end
+
+function runMisspell(bufpane)
+    micro.CurPane().Buf:ClearMessages("misspell")
+    local path = micro.CurPane().Buf.Path
+    shell.JobSpawn("misspell", {path}, nil, nil, onExit, "%f:%l:%d+: %m")
+end
+
+function init()
+	if config.GetGlobalOption("misspell") == nil then
+    	config.SetGlobalOption("misspell", "true")
+	end
+	config.MakeCommand("misspell", misspellCommand, nil)
 end
